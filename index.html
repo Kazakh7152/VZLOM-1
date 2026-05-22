@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Взлом двери терминала</title>
+    <style>
+        body {
+            background-color: #050505;
+            color: #0f0;
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            text-shadow: 0 0 5px #0f0;
+        }
+
+        /* Эффект сканлайнов (полосы на старых мониторах) */
+        body::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 2;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        #terminal {
+            width: 80%;
+            max-width: 800px;
+            border: 2px solid #0f0;
+            padding: 30px;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+            background-color: #000;
+            position: relative;
+            z-index: 3;
+        }
+
+        h1 {
+            text-align: center;
+            border-bottom: 1px dashed #0f0;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+
+        .timers-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .warning { color: #f00; text-shadow: 0 0 5px #f00; }
+
+        /* Прогресс-бар */
+        #progress-wrapper {
+            width: 100%;
+            height: 30px;
+            border: 2px solid #0f0;
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        #progress-bar {
+            height: 100%;
+            width: 0%;
+            background-color: #0f0;
+            transition: width 0.5s ease-in-out;
+            box-shadow: 0 0 15px #0f0;
+        }
+
+        #progress-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            top: 5px;
+            color: #000;
+            font-weight: bold;
+            text-shadow: none;
+        }
+
+        /* Зона вопроса */
+        #question {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            text-align: center;
+            min-height: 60px;
+        }
+
+        #options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        button {
+            background-color: transparent;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 15px;
+            font-family: inherit;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-shadow: 0 0 5px #0f0;
+        }
+
+        button:hover {
+            background-color: #0f0;
+            color: #000;
+            box-shadow: 0 0 15px #0f0;
+        }
+
+        button:disabled {
+            border-color: #333;
+            color: #333;
+            cursor: not-allowed;
+            text-shadow: none;
+        }
+
+        /* Модальное окно */
+        #modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            z-index: 10;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #modal-content {
+            border: 2px solid #0f0;
+            padding: 40px;
+            text-align: center;
+            background-color: #000;
+            box-shadow: 0 0 30px #0f0;
+        }
+
+        .success-text {
+            font-size: 2rem;
+            margin-bottom: 20px;
+        }
+
+        .fail-text {
+            color: #f00;
+            border-color: #f00;
+            box-shadow: 0 0 30px #f00;
+            text-shadow: 0 0 10px #f00;
+        }
+
+        #modal-content.fail-modal {
+            border-color: #f00;
+        }
+
+        .restart-btn {
+            margin-top: 20px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="terminal">
+        <h1>СИСТЕМА БЛОКИРОВКИ ДВЕРИ v3.14</h1>
+        
+        <div class="timers-container">
+            <div>ОБЩЕЕ ВРЕМЯ ВЗЛОМА: <span id="global-timer">02:00</span></div>
+            <div>ТАЙМЕР ВОПРОСА: <span id="question-timer">15</span>с</div>
+        </div>
+
+        <div id="progress-wrapper">
+            <div id="progress-bar"></div>
+            <div id="progress-text">ВЗЛОМ: 0%</div>
+        </div>
+
+        <div id="question">Инициализация обхода защиты...</div>
+
+        <div id="options">
+            <button onclick="checkAnswer(0)" id="btn-0">Вариант 1</button>
+            <button onclick="checkAnswer(1)" id="btn-1">Вариант 2</button>
+            <button onclick="checkAnswer(2)" id="btn-2">Вариант 3</button>
+            <button onclick="checkAnswer(3)" id="btn-3">Вариант 4</button>
+        </div>
+    </div>
+
+    <!-- Всплывающее окно результата -->
+    <div id="modal">
+        <div id="modal-content">
+            <div id="modal-message" class="success-text"></div>
+            <button class="restart-btn" onclick="startGame()">ПЕРЕЗАГРУЗИТЬ СИСТЕМУ</button>
+        </div>
+    </div>
+
+    <script>
+        // База забавных вопросов
+        const questionsDB = [
+            {
+                q: "Сколько будет 2 + 2 * 2?",
+                options: ["8", "6", "Рыба", "Слишком сложно"],
+                ans: 1
+            },
+            {
+                q: "Какого цвета стоп-кран в самолете?",
+                options: ["Красный", "Синий", "В самолетах нет стоп-крана", "Невидимый"],
+                ans: 2
+            },
+            {
+                q: "Что пьет корова?",
+                options: ["Молоко", "Воду", "Машинное масло", "Колу"],
+                ans: 1 // Ловушка: многие по инерции отвечают "молоко"
+            },
+            {
+                q: "Если у тебя одно яблоко, и ты его съел, что осталось?",
+                options: ["Огрызок", "Ноль яблок", "Матрица сломалась", "Чувство голода"],
+                ans: 1
+            },
+            {
+                q: "Как зовут кота из мультика 'Том и Джерри'?",
+                options: ["Джерри", "Барсик", "Спайк", "Том"],
+                ans: 3
+            }
+        ];
+
+        let currentQuestionIndex = 0;
+        let progress = 0;
+        let globalTimeLeft = 120; // 2 минуты
+        let questionTimeLeft = 15;
+        let globalInterval, questionInterval;
+
+        function startGame() {
+            // Сброс всех значений
+            currentQuestionIndex = 0;
+            progress = 0;
+            globalTimeLeft = 120;
+            updateProgress(0);
+            
+            document.getElementById('modal').style.display = 'none';
+            document.getElementById('modal-content').classList.remove('fail-modal');
+            
+            clearInterval(globalInterval);
+            clearInterval(questionInterval);
+            
+            // Запуск таймеров
+            globalInterval = setInterval(updateGlobalTimer, 1000);
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            if (currentQuestionIndex >= questionsDB.length) return;
+
+            const qData = questionsDB[currentQuestionIndex];
+            document.getElementById('question').innerText = qData.q;
+            
+            for (let i = 0; i < 4; i++) {
+                document.getElementById(`btn-${i}`).innerText = qData.options[i];
+            }
+
+            // Сброс таймера вопроса
+            questionTimeLeft = 15;
+            document.getElementById('question-timer').innerText = questionTimeLeft;
+            document.getElementById('question-timer').classList.remove('warning');
+            
+            clearInterval(questionInterval);
+            questionInterval = setInterval(updateQuestionTimer, 1000);
+        }
+
+        function checkAnswer(selectedIndex) {
+            const correctIndex = questionsDB[currentQuestionIndex].ans;
+
+            if (selectedIndex === correctIndex) {
+                // Правильно
+                progress += 20;
+                updateProgress(progress);
+                currentQuestionIndex++;
+
+                if (progress >= 100) {
+                    endGame(true);
+                } else {
+                    loadQuestion();
+                }
+            } else {
+                // Неправильно - провал взлома
+                endGame(false, "ОШИБКА АВТОРИЗАЦИИ! НЕВЕРНЫЙ ОТВЕТ.");
+            }
+        }
+
+        function updateProgress(val) {
+            const bar = document.getElementById('progress-bar');
+            const text = document.getElementById('progress-text');
+            bar.style.width = val + '%';
+            text.innerText = `ВЗЛОМ: ${val}%`;
+            
+            if (val > 50) {
+                text.style.color = "#000"; // Текст становится черным на фоне зеленого бара
+            } else {
+                text.style.color = "#0f0";
+            }
+        }
+
+        function updateGlobalTimer() {
+            globalTimeLeft--;
+            const minutes = Math.floor(globalTimeLeft / 60).toString().padStart(2, '0');
+            const seconds = (globalTimeLeft % 60).toString().padStart(2, '0');
+            const timerEl = document.getElementById('global-timer');
+            timerEl.innerText = `${minutes}:${seconds}`;
+
+            if (globalTimeLeft <= 10) {
+                timerEl.classList.add('warning');
+            }
+
+            if (globalTimeLeft <= 0) {
+                endGame(false, "ВРЕМЯ ВЫШЛО! СИСТЕМА ЗАБЛОКИРОВАНА.");
+            }
+        }
+
+        function updateQuestionTimer() {
+            questionTimeLeft--;
+            const timerEl = document.getElementById('question-timer');
+            timerEl.innerText = questionTimeLeft;
+
+            if (questionTimeLeft <= 5) {
+                timerEl.classList.add('warning');
+            }
+
+            if (questionTimeLeft <= 0) {
+                endGame(false, "ВЫ СЛИШКОМ ДОЛГО ДУМАЛИ! СИСТЕМА ЗАБЛОКИРОВАНА.");
+            }
+        }
+
+        function endGame(isSuccess, failMsg = "") {
+            clearInterval(globalInterval);
+            clearInterval(questionInterval);
+            
+            const modal = document.getElementById('modal');
+            const modalContent = document.getElementById('modal-content');
+            const msgEl = document.getElementById('modal-message');
+
+            modal.style.display = 'flex';
+
+            if (isSuccess) {
+                msgEl.innerText = "Спасибо за взлом нужно сказать Ванешер код  5-4-1-3";
+                msgEl.className = "success-text";
+            } else {
+                msgEl.innerText = failMsg;
+                msgEl.className = "success-text fail-text";
+                modalContent.classList.add('fail-modal');
+            }
+        }
+
+        // Запуск при загрузке страницы
+        window.onload = startGame;
+    </script>
+</body>
+</html>
